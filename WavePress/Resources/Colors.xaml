@@ -2,39 +2,41 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- ============================================ -->
-    <!--  WavePress Color Palette — Dark Theme        -->
+    <!--  WavePress Color Palette — Premium Dark      -->
     <!-- ============================================ -->
 
-    <!-- Background layers -->
-    <Color x:Key="BackgroundDark">#0F0F1A</Color>
-    <Color x:Key="BackgroundMain">#14141F</Color>
-    <Color x:Key="SurfaceColor">#1E1E2E</Color>
-    <Color x:Key="SurfaceLight">#2A2A3E</Color>
-    <Color x:Key="SurfaceHover">#33334A</Color>
-    <Color x:Key="BorderColor">#3A3A52</Color>
-    <Color x:Key="BorderLight">#4A4A66</Color>
+    <!-- Background layers (deeper, richer) -->
+    <Color x:Key="BackgroundDark">#0A0A14</Color>
+    <Color x:Key="BackgroundMain">#0E0E1A</Color>
+    <Color x:Key="SurfaceColor">#161625</Color>
+    <Color x:Key="SurfaceLight">#1E1E32</Color>
+    <Color x:Key="SurfaceHover">#282845</Color>
+    <Color x:Key="BorderColor">#2D2D48</Color>
+    <Color x:Key="BorderLight">#3A3A5C</Color>
 
-    <!-- Primary accent — Cyan/Teal -->
-    <Color x:Key="PrimaryColor">#00B4D8</Color>
-    <Color x:Key="PrimaryLight">#48CAE4</Color>
-    <Color x:Key="PrimaryDark">#0077B6</Color>
-    <Color x:Key="PrimaryMuted">#1A3A4A</Color>
+    <!-- Primary accent — Vibrant Cyan -->
+    <Color x:Key="PrimaryColor">#00D4FF</Color>
+    <Color x:Key="PrimaryLight">#5CE5FF</Color>
+    <Color x:Key="PrimaryDark">#0090B8</Color>
+    <Color x:Key="PrimaryMuted">#0D2A38</Color>
+    <Color x:Key="PrimaryGlow">#1A00D4FF</Color>
 
-    <!-- Secondary accent — Violet -->
-    <Color x:Key="SecondaryColor">#7C3AED</Color>
-    <Color x:Key="SecondaryLight">#A78BFA</Color>
+    <!-- Secondary accent — Electric Violet -->
+    <Color x:Key="SecondaryColor">#8B5CF6</Color>
+    <Color x:Key="SecondaryLight">#B794F6</Color>
+    <Color x:Key="SecondaryDark">#6D28D9</Color>
 
     <!-- Text -->
-    <Color x:Key="TextPrimary">#F0F0F8</Color>
-    <Color x:Key="TextSecondary">#A0A0B8</Color>
-    <Color x:Key="TextMuted">#6B6B82</Color>
+    <Color x:Key="TextPrimary">#F5F5FF</Color>
+    <Color x:Key="TextSecondary">#B0B0CC</Color>
+    <Color x:Key="TextMuted">#6B6B8A</Color>
     <Color x:Key="TextOnPrimary">#FFFFFF</Color>
 
     <!-- Status colors -->
-    <Color x:Key="SuccessColor">#10B981</Color>
-    <Color x:Key="WarningColor">#F59E0B</Color>
-    <Color x:Key="ErrorColor">#EF4444</Color>
-    <Color x:Key="InfoColor">#3B82F6</Color>
+    <Color x:Key="SuccessColor">#22D3AE</Color>
+    <Color x:Key="WarningColor">#FBBF24</Color>
+    <Color x:Key="ErrorColor">#F87171</Color>
+    <Color x:Key="InfoColor">#60A5FA</Color>
 
     <!-- ============================================ -->
     <!--  SolidColorBrushes                           -->
@@ -66,20 +68,55 @@
     <SolidColorBrush x:Key="ErrorBrush" Color="{StaticResource ErrorColor}" />
     <SolidColorBrush x:Key="InfoBrush" Color="{StaticResource InfoColor}" />
 
-    <!-- Gradient Brushes -->
+    <!-- ============================================ -->
+    <!--  Gradient Brushes (Premium)                  -->
+    <!-- ============================================ -->
+
+    <!-- Gradient for primary accent elements -->
     <LinearGradientBrush x:Key="PrimaryGradientBrush" StartPoint="0,0" EndPoint="1,1">
-        <GradientStop Color="{StaticResource PrimaryColor}" Offset="0" />
-        <GradientStop Color="{StaticResource SecondaryColor}" Offset="1" />
+        <GradientStop Color="#00D4FF" Offset="0" />
+        <GradientStop Color="#8B5CF6" Offset="1" />
     </LinearGradientBrush>
 
+    <!-- Sidebar gradient (deeper, more premium) -->
     <LinearGradientBrush x:Key="SidebarGradientBrush" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#1A1A2E" Offset="0" />
-        <GradientStop Color="#0F0F1A" Offset="1" />
+        <GradientStop Color="#111122" Offset="0" />
+        <GradientStop Color="#0A0A14" Offset="1" />
     </LinearGradientBrush>
 
+    <!-- Header gradient with subtle accent -->
     <LinearGradientBrush x:Key="HeaderGradientBrush" StartPoint="0,0" EndPoint="1,0">
-        <GradientStop Color="#1A1A2E" Offset="0" />
-        <GradientStop Color="#14141F" Offset="1" />
+        <GradientStop Color="#111122" Offset="0" />
+        <GradientStop Color="#0E0E1A" Offset="0.7" />
+        <GradientStop Color="#0E0E1A" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Card glass-effect gradient (subtle top-to-bottom) -->
+    <LinearGradientBrush x:Key="CardGlassBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#1C1C30" Offset="0" />
+        <GradientStop Color="#141422" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Accent line gradient for card borders/accents -->
+    <LinearGradientBrush x:Key="AccentLineBrush" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="#00D4FF" Offset="0" />
+        <GradientStop Color="#8B5CF6" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Title bar button hover -->
+    <SolidColorBrush x:Key="TitleBarButtonHoverBrush" Color="#2A2A40" />
+    <SolidColorBrush x:Key="TitleBarCloseHoverBrush" Color="#C42B1C" />
+
+    <!-- Progress bar gradient -->
+    <LinearGradientBrush x:Key="ProgressGradientBrush" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="#00D4FF" Offset="0" />
+        <GradientStop Color="#8B5CF6" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Sidebar active indicator -->
+    <LinearGradientBrush x:Key="SidebarActiveBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#00D4FF" Offset="0" />
+        <GradientStop Color="#8B5CF6" Offset="1" />
     </LinearGradientBrush>
 
 </ResourceDictionary>
