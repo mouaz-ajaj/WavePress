@@ -97,6 +97,57 @@ namespace WavePress.ViewModels
         [ObservableProperty]
         private string _outputFileName = "output";
 
+        // ── حالة تفعيل/تعطيل الإعدادات حسب الخوارزمية ──
+        // 0 = Nonlinear Quantization  → BitsPerSample + QuantizationLevels
+        // 1 = DPCM                    → BitsPerSample + QuantizationLevels
+        // 2 = Delta Modulation        → DeltaStepSize فقط
+        // 3 = Adaptive Delta Mod.     → DeltaStepSize + AdaptiveFactor
+
+        [ObservableProperty]
+        private bool _isBitsPerSampleEnabled = true;
+
+        [ObservableProperty]
+        private bool _isQuantizationLevelsEnabled = true;
+
+        [ObservableProperty]
+        private bool _isDeltaStepSizeEnabled = false;
+
+        [ObservableProperty]
+        private bool _isAdaptiveFactorEnabled = false;
+
+        /// <summary>
+        /// يُستدعى تلقائياً بواسطة CommunityToolkit عند تغيير SelectedAlgorithmIndex.
+        /// يحدّث حالة تفعيل/تعطيل الإعدادات بناءً على الخوارزمية المختارة.
+        /// Called automatically by CommunityToolkit when SelectedAlgorithmIndex changes.
+        /// </summary>
+        partial void OnSelectedAlgorithmIndexChanged(int value)
+        {
+            switch (value)
+            {
+                case 0: // Nonlinear Quantization (µ-law)
+                case 1: // DPCM
+                    IsBitsPerSampleEnabled      = true;
+                    IsQuantizationLevelsEnabled = true;
+                    IsDeltaStepSizeEnabled      = false;
+                    IsAdaptiveFactorEnabled     = false;
+                    break;
+
+                case 2: // Delta Modulation
+                    IsBitsPerSampleEnabled      = false;
+                    IsQuantizationLevelsEnabled = false;
+                    IsDeltaStepSizeEnabled      = true;
+                    IsAdaptiveFactorEnabled     = false;
+                    break;
+
+                case 3: // Adaptive Delta Modulation
+                    IsBitsPerSampleEnabled      = false;
+                    IsQuantizationLevelsEnabled = false;
+                    IsDeltaStepSizeEnabled      = true;
+                    IsAdaptiveFactorEnabled     = true;
+                    break;
+            }
+        }
+
         // ══════════════════════════════════════
         //  حالة الضغط والتقدم
         // ══════════════════════════════════════
@@ -131,6 +182,9 @@ namespace WavePress.ViewModels
 
         [ObservableProperty]
         private string _reportOriginalSize = "";
+
+        [ObservableProperty]
+        private string _reportPcmSize = ""; // حجم PCM الخام قبل الضغط
 
         [ObservableProperty]
         private string _reportCompressedSize = "";
@@ -623,9 +677,15 @@ namespace WavePress.ViewModels
         /// <summary>يبني نموذج التقرير من نتيجة الضغط</summary>
         private void BuildReport(CompressionResult result, CompressionSettings settings)
         {
+            // الحجم الأصلي للملف على القرص (وليس PCM الموسّع)
+            long diskFileSize = AudioInfo?.FileSize ?? result.OriginalSize;
+            // حجم PCM الخام (هو ما تعمل عليه الخوارزمية فعلياً)
+            long pcmSize = result.OriginalSize;
+
             Report = new ReportModel
             {
-                OriginalSize = result.OriginalSize,
+                // نستخدم حجم الملف الفعلي للمقارنة المنطقية في التقرير
+                OriginalSize = diskFileSize,
                 CompressedSize = result.CompressedSize,
                 TimeElapsed = result.TimeElapsed,
                 AlgorithmName = result.AlgorithmName,
@@ -638,13 +698,19 @@ namespace WavePress.ViewModels
             HasReport = true;
 
             // تحديث نصوص التقرير للعرض
-            ReportOriginalSize = FileSizeFormatter.Format(Report.OriginalSize);
-            ReportCompressedSize = FileSizeFormatter.Format(Report.CompressedSize);
-            ReportSavedSize = FileSizeFormatter.Format(Report.SavedSize);
-            ReportSavingPercentage = $"{Report.SavingPercentage:F1}%";
-            ReportCompressionRatio = $"{Report.CompressionRatio:F2}:1";
-            ReportTimeElapsed = $"{Report.TimeElapsed.TotalMilliseconds:F0} ms";
-            ReportAlgorithm = Report.AlgorithmName;
+            ReportOriginalSize = FileSizeFormatter.Format(diskFileSize);
+            // نعرض حجم PCM الخام للتوضيح الأكاديمي
+            ReportPcmSize = FileSizeFormatter.Format(pcmSize);
+            ReportCompressedSize = FileSizeFormatter.Format(result.CompressedSize);
+            // نسبة التوفير والحجم الموفوّر مقارنةً بـ PCM الخام (وهو ما ضغطناه فعلاً)
+            long savedFromPcm = pcmSize - result.CompressedSize;
+            double savingPct = pcmSize > 0 ? (double)savedFromPcm / pcmSize * 100.0 : 0;
+            double ratioFromPcm = result.CompressedSize > 0 ? (double)pcmSize / result.CompressedSize : 0;
+            ReportSavedSize = FileSizeFormatter.Format(Math.Max(0, savedFromPcm));
+            ReportSavingPercentage = $"{Math.Max(0, savingPct):F1}%";
+            ReportCompressionRatio = $"{ratioFromPcm:F2}:1";
+            ReportTimeElapsed = $"{result.TimeElapsed.TotalMilliseconds:F0} ms";
+            ReportAlgorithm = result.AlgorithmName;
         }
 
         // ══════════════════════════════════════

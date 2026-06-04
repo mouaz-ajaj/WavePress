@@ -51,4 +51,19 @@ namespace WavePress.Converters
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
             value is Visibility.Collapsed;
     }
+
+    /// <summary>
+    /// يحوّل bool إلى قيمة Opacity:
+    ///   true  → 1.0  (مفعّل — ظاهر بالكامل)
+    ///   false → 0.38 (معطّل — شفاف جزئياً بمعيار Material Design)
+    /// Converts bool to Opacity: true → 1.0, false → 0.38 (disabled state).
+    /// </summary>
+    public class BoolToOpacityConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+            value is true ? 1.0 : 0.38;
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+            throw new NotImplementedException();
+    }
 }

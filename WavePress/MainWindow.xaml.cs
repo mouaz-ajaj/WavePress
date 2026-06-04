@@ -6,7 +6,7 @@ namespace WavePress
 {
     /// <summary>
     /// الكود الخلفي للنافذة الرئيسية — يتعامل فقط مع أحداث لا يمكن تنفيذها في ViewModel.
-    /// Code-behind for MainWindow — handles Drag & Drop, sidebar scroll, and custom title bar buttons.
+    /// Code-behind for MainWindow — handles Drag & Drop and custom title bar buttons.
     /// </summary>
     public partial class MainWindow : Window
     {
@@ -96,21 +96,6 @@ namespace WavePress
             e.Handled = true;
         }
 
-        // ══════════════════════════════════════
-        //  Sidebar Scroll Navigation
-        // ══════════════════════════════════════
-
-        private void ScrollToSection(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button button && button.Tag is string sectionName)
-            {
-                var element = this.FindName(sectionName) as FrameworkElement;
-                if (element != null)
-                {
-                    element.BringIntoView();
-                }
-            }
-        }
 
         // ══════════════════════════════════════
         //  Cleanup

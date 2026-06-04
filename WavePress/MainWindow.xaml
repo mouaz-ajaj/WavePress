@@ -32,6 +32,7 @@
         <cvt:InverseBoolConverter x:Key="InverseBool" />
         <cvt:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
         <cvt:NullToVisibilityConverter x:Key="NullToVis" />
+        <cvt:BoolToOpacityConverter x:Key="BoolToOpacity" />
     </Window.Resources>
 
     <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
@@ -87,7 +88,6 @@
             <!-- ══════════════════════════════════════════ -->
             <Grid Grid.Row="1">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="230" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
@@ -96,86 +96,9 @@
                 </Grid.RowDefinitions>
 
                 <!-- ══════════════════════════════════════════ -->
-                <!--  SIDEBAR                                   -->
-                <!-- ══════════════════════════════════════════ -->
-                <Border Grid.Row="0" Grid.Column="0" Grid.RowSpan="2"
-                        Background="{StaticResource SidebarGradientBrush}"
-                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-
-                        <!-- Brand Area -->
-                        <StackPanel Grid.Row="0" Margin="20,24,20,20">
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                <Ellipse Width="32" Height="32" Margin="0,0,12,0">
-                                    <Ellipse.Fill>
-                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                            <GradientStop Color="#00D4FF" Offset="0" />
-                                            <GradientStop Color="#8B5CF6" Offset="1" />
-                                        </LinearGradientBrush>
-                                    </Ellipse.Fill>
-                                </Ellipse>
-                                <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="WavePress" FontSize="17" FontWeight="Bold"
-                                               Foreground="{StaticResource TextPrimaryBrush}" />
-                                    <TextBlock Text="Audio Compression" FontSize="10"
-                                               Foreground="{StaticResource TextMutedBrush}" Margin="0,-1,0,0" />
-                                </StackPanel>
-                            </StackPanel>
-
-                            <!-- Accent line -->
-                            <Border Height="2" CornerRadius="1" Margin="0,12,0,0"
-                                    Background="{StaticResource AccentLineBrush}" Opacity="0.4" />
-                        </StackPanel>
-
-                        <!-- Navigation -->
-                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                            <StackPanel Margin="8,0,8,16">
-                                <TextBlock Text="MAIN" Style="{StaticResource CaptionText}"
-                                           Margin="16,0,0,8" FontWeight="SemiBold" FontSize="10"
-                                           Foreground="{StaticResource TextMutedBrush}" />
-
-                                <Button Style="{StaticResource SidebarButton}" Content="     Import Audio"
-                                        Click="ScrollToSection" Tag="ImportSection" />
-                                <Button Style="{StaticResource SidebarButton}" Content="     Audio Preview"
-                                        Click="ScrollToSection" Tag="PlaybackSection" />
-                                <Button Style="{StaticResource SidebarButton}" Content="     File Properties"
-                                        Click="ScrollToSection" Tag="InfoSection" />
-
-                                <TextBlock Text="PROCESSING" Style="{StaticResource CaptionText}"
-                                           Margin="16,16,0,8" FontWeight="SemiBold" FontSize="10"
-                                           Foreground="{StaticResource TextMutedBrush}" />
-
-                                <Button Style="{StaticResource SidebarButton}" Content="     Compression Settings"
-                                        Click="ScrollToSection" Tag="SettingsSection" />
-                                <Button Style="{StaticResource SidebarButton}" Content="     Performance Monitor"
-                                        Click="ScrollToSection" Tag="MonitorSection" />
-
-                                <TextBlock Text="OUTPUT" Style="{StaticResource CaptionText}"
-                                           Margin="16,16,0,8" FontWeight="SemiBold" FontSize="10"
-                                           Foreground="{StaticResource TextMutedBrush}" />
-
-                                <Button Style="{StaticResource SidebarButton}" Content="     Report"
-                                        Click="ScrollToSection" Tag="ReportSection" />
-                                <Button Style="{StaticResource SidebarButton}" Content="     Save Output"
-                                        Click="ScrollToSection" Tag="SaveSection" />
-
-                                <Border Height="1" Margin="16,20" Background="{StaticResource BorderBrush}" />
-
-                                <Button Style="{StaticResource SidebarButton}" Content="     Reset All"
-                                        Command="{Binding ResetCommand}" Foreground="{StaticResource ErrorBrush}" />
-                            </StackPanel>
-                        </ScrollViewer>
-                    </Grid>
-                </Border>
-
-                <!-- ══════════════════════════════════════════ -->
                 <!--  MAIN CONTENT                              -->
                 <!-- ══════════════════════════════════════════ -->
-                <ScrollViewer x:Name="MainScroller" Grid.Row="0" Grid.Column="1"
+                <ScrollViewer x:Name="MainScroller" Grid.Row="0" Grid.Column="0"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="12,8,12,16">
@@ -196,8 +119,12 @@
                                         </TextBlock.Text>
                                     </TextBlock>
                                 </StackPanel>
-                                <TextBlock Grid.Column="1" Text="v1.0" Style="{StaticResource CaptionText}"
-                                           VerticalAlignment="Top" />
+                                
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                                    <Button Style="{StaticResource DangerButton}" Content="Reset All"
+                                            Command="{Binding ResetCommand}" Margin="0,0,16,0" Padding="12,6" FontSize="11" />
+                                    <TextBlock Text="v1.0" Style="{StaticResource CaptionText}" VerticalAlignment="Center" />
+                                </StackPanel>
                             </Grid>
                         </Border>
 
@@ -371,52 +298,101 @@
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
 
-                                    <!-- Algorithm -->
+                                    <!-- ── Algorithm ── -->
                                     <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,14">
-                                        <TextBlock Text="Algorithm" Style="{StaticResource BodyText}" Margin="0,0,0,6" />
+                                        <TextBlock Text="Algorithm" Style="{StaticResource BodyText}" Margin="0,0,0,6">
+                                            <TextBlock.ToolTip>
+                                                <ToolTip Content="Select the compression algorithm. Each algorithm has different trade-offs between quality and compression ratio." />
+                                            </TextBlock.ToolTip>
+                                        </TextBlock>
                                         <ComboBox Style="{StaticResource ModernComboBox}"
                                                   ItemsSource="{Binding AlgorithmNames}"
                                                   SelectedIndex="{Binding SelectedAlgorithmIndex}"
                                                   IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBool}}" />
                                     </StackPanel>
 
-                                    <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,14">
-                                        <TextBlock Text="Bits Per Sample" Style="{StaticResource BodyText}" Margin="0,0,0,6" />
+                                    <!-- ── Bits Per Sample ── -->
+                                    <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,14"
+                                                Opacity="{Binding IsBitsPerSampleEnabled, Converter={StaticResource BoolToOpacity}}">
+                                        <TextBlock Text="Bits Per Sample" Style="{StaticResource BodyText}" Margin="0,0,0,6">
+                                            <TextBlock.ToolTip>
+                                                <ToolTip Content="Number of bits used to store each audio sample after compression. Lower = smaller file, higher = better quality. Used by Nonlinear Quantization and DPCM." />
+                                            </TextBlock.ToolTip>
+                                        </TextBlock>
                                         <TextBox Style="{StaticResource ModernTextBox}"
                                                  Text="{Binding TargetBitsPerSample, UpdateSourceTrigger=PropertyChanged}"
-                                                 IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBool}}" />
+                                                 IsEnabled="{Binding IsBitsPerSampleEnabled}"
+                                                 ToolTip="Used by: Nonlinear Quantization, DPCM" />
+                                        <TextBlock Text="Used by: Nonlinear Quantization, DPCM"
+                                                   Style="{StaticResource CaptionText}" Margin="2,4,0,0"
+                                                   Visibility="{Binding IsBitsPerSampleEnabled, Converter={StaticResource InverseBoolToVis}}" />
                                     </StackPanel>
 
-                                    <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,14">
-                                        <TextBlock Text="Quantization Levels" Style="{StaticResource BodyText}" Margin="0,0,0,6" />
+                                    <!-- ── Quantization Levels ── -->
+                                    <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,14"
+                                                Opacity="{Binding IsQuantizationLevelsEnabled, Converter={StaticResource BoolToOpacity}}">
+                                        <TextBlock Text="Quantization Levels" Style="{StaticResource BodyText}" Margin="0,0,0,6">
+                                            <TextBlock.ToolTip>
+                                                <ToolTip Content="Number of discrete levels the signal amplitude is mapped to. More levels = higher quality. Used by Nonlinear Quantization and DPCM." />
+                                            </TextBlock.ToolTip>
+                                        </TextBlock>
                                         <TextBox Style="{StaticResource ModernTextBox}"
                                                  Text="{Binding QuantizationLevels, UpdateSourceTrigger=PropertyChanged}"
-                                                 IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBool}}" />
+                                                 IsEnabled="{Binding IsQuantizationLevelsEnabled}"
+                                                 ToolTip="Used by: Nonlinear Quantization, DPCM" />
+                                        <TextBlock Text="Used by: Nonlinear Quantization, DPCM"
+                                                   Style="{StaticResource CaptionText}" Margin="2,4,0,0"
+                                                   Visibility="{Binding IsQuantizationLevelsEnabled, Converter={StaticResource InverseBoolToVis}}" />
                                     </StackPanel>
 
-                                    <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,8,14">
-                                        <TextBlock Text="Delta Step Size" Style="{StaticResource BodyText}" Margin="0,0,0,6" />
+                                    <!-- ── Delta Step Size ── -->
+                                    <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,8,14"
+                                                Opacity="{Binding IsDeltaStepSizeEnabled, Converter={StaticResource BoolToOpacity}}">
+                                        <TextBlock Text="Delta Step Size" Style="{StaticResource BodyText}" Margin="0,0,0,6">
+                                            <TextBlock.ToolTip>
+                                                <ToolTip Content="The fixed step size (δ) added or subtracted per sample in Delta Modulation. Larger = tracks fast changes but adds noise; smaller = smoother but may lag. Used by Delta Modulation and Adaptive Delta Modulation." />
+                                            </TextBlock.ToolTip>
+                                        </TextBlock>
                                         <TextBox Style="{StaticResource ModernTextBox}"
                                                  Text="{Binding DeltaStepSize, UpdateSourceTrigger=PropertyChanged}"
-                                                 IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBool}}" />
+                                                 IsEnabled="{Binding IsDeltaStepSizeEnabled}"
+                                                 ToolTip="Used by: Delta Modulation, Adaptive Delta Modulation" />
+                                        <TextBlock Text="Used by: Delta Modulation, Adaptive Delta Mod."
+                                                   Style="{StaticResource CaptionText}" Margin="2,4,0,0"
+                                                   Visibility="{Binding IsDeltaStepSizeEnabled, Converter={StaticResource InverseBoolToVis}}" />
                                     </StackPanel>
 
-                                    <StackPanel Grid.Row="2" Grid.Column="1" Margin="8,0,0,14">
-                                        <TextBlock Text="Adaptive Factor" Style="{StaticResource BodyText}" Margin="0,0,0,6" />
+                                    <!-- ── Adaptive Factor ── -->
+                                    <StackPanel Grid.Row="2" Grid.Column="1" Margin="8,0,0,14"
+                                                Opacity="{Binding IsAdaptiveFactorEnabled, Converter={StaticResource BoolToOpacity}}">
+                                        <TextBlock Text="Adaptive Factor" Style="{StaticResource BodyText}" Margin="0,0,0,6">
+                                            <TextBlock.ToolTip>
+                                                <ToolTip Content="Multiplier applied to the step size when the signal keeps moving in the same direction. Higher = faster step growth, better slope tracking. Used only by Adaptive Delta Modulation." />
+                                            </TextBlock.ToolTip>
+                                        </TextBlock>
                                         <TextBox Style="{StaticResource ModernTextBox}"
                                                  Text="{Binding AdaptiveFactor, UpdateSourceTrigger=PropertyChanged}"
-                                                 IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBool}}" />
+                                                 IsEnabled="{Binding IsAdaptiveFactorEnabled}"
+                                                 ToolTip="Used by: Adaptive Delta Modulation only" />
+                                        <TextBlock Text="Used by: Adaptive Delta Modulation only"
+                                                   Style="{StaticResource CaptionText}" Margin="2,4,0,0"
+                                                   Visibility="{Binding IsAdaptiveFactorEnabled, Converter={StaticResource InverseBoolToVis}}" />
                                     </StackPanel>
 
+                                    <!-- ── Output File Name ── -->
                                     <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,20">
-                                        <TextBlock Text="Output File Name" Style="{StaticResource BodyText}" Margin="0,0,0,6" />
+                                        <TextBlock Text="Output File Name" Style="{StaticResource BodyText}" Margin="0,0,0,6">
+                                            <TextBlock.ToolTip>
+                                                <ToolTip Content="Name of the output compressed file (without extension). The .wvp extension will be added automatically." />
+                                            </TextBlock.ToolTip>
+                                        </TextBlock>
                                         <TextBox Style="{StaticResource ModernTextBox}"
                                                  Text="{Binding OutputFileName, UpdateSourceTrigger=PropertyChanged}"
                                                  IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBool}}" />
                                     </StackPanel>
 
-                                    <!-- Action Buttons -->
-                                    <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" 
+                                    <!-- ── Action Buttons ── -->
+                                    <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2"
                                                 Orientation="Horizontal" HorizontalAlignment="Center">
                                         <Button Style="{StaticResource PrimaryButton}" Content="Compress"
                                                 Command="{Binding CompressCommand}" Margin="0,0,10,0"
@@ -556,7 +532,7 @@
                                     <StackPanel Visibility="{Binding HasReport, Converter={StaticResource BoolToVis}}">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="150" />
+                                                <ColumnDefinition Width="160" />
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
                                             <Grid.RowDefinitions>
@@ -568,33 +544,41 @@
                                                 <RowDefinition Height="30" />
                                                 <RowDefinition Height="30" />
                                                 <RowDefinition Height="30" />
+                                                <RowDefinition Height="30" />
                                             </Grid.RowDefinitions>
 
-                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Original Size" Style="{StaticResource InfoLabel}" />
+                                            <!-- Original file on disk -->
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Original Size (Disk)" Style="{StaticResource InfoLabel}" />
                                             <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ReportOriginalSize}" Style="{StaticResource InfoValue}" />
 
-                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Compressed Size" Style="{StaticResource InfoLabel}" />
-                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ReportCompressedSize}" Style="{StaticResource InfoValue}" />
+                                            <!-- PCM raw size — what the algorithm actually worked on -->
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="PCM Size (Uncompressed)" Style="{StaticResource InfoLabel}"
+                                                       Foreground="{StaticResource TextMutedBrush}" />
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ReportPcmSize}" Style="{StaticResource InfoValue}"
+                                                       Foreground="{StaticResource TextMutedBrush}" />
 
-                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Saved" Style="{StaticResource InfoLabel}" />
-                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ReportSavedSize}" Style="{StaticResource InfoValue}"
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Compressed Size" Style="{StaticResource InfoLabel}" />
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ReportCompressedSize}" Style="{StaticResource InfoValue}" />
+
+                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Saved vs. PCM" Style="{StaticResource InfoLabel}" />
+                                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ReportSavedSize}" Style="{StaticResource InfoValue}"
                                                        Foreground="{StaticResource SuccessBrush}" />
 
-                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Saving %" Style="{StaticResource InfoLabel}" />
-                                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ReportSavingPercentage}" Style="{StaticResource InfoValue}"
+                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Saving %" Style="{StaticResource InfoLabel}" />
+                                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding ReportSavingPercentage}" Style="{StaticResource InfoValue}"
                                                        Foreground="{StaticResource SuccessBrush}" />
 
-                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Compression Ratio" Style="{StaticResource InfoLabel}" />
-                                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding ReportCompressionRatio}" Style="{StaticResource InfoValue}" />
+                                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Compression Ratio" Style="{StaticResource InfoLabel}" />
+                                            <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding ReportCompressionRatio}" Style="{StaticResource InfoValue}" />
 
-                                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Time Elapsed" Style="{StaticResource InfoLabel}" />
-                                            <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding ReportTimeElapsed}" Style="{StaticResource InfoValue}" />
+                                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Time Elapsed" Style="{StaticResource InfoLabel}" />
+                                            <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding ReportTimeElapsed}" Style="{StaticResource InfoValue}" />
 
-                                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Algorithm" Style="{StaticResource InfoLabel}" />
-                                            <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding ReportAlgorithm}" Style="{StaticResource InfoValue}" />
+                                            <TextBlock Grid.Row="7" Grid.Column="0" Text="Algorithm" Style="{StaticResource InfoLabel}" />
+                                            <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding ReportAlgorithm}" Style="{StaticResource InfoValue}" />
 
-                                            <TextBlock Grid.Row="7" Grid.Column="0" Text="Output Path" Style="{StaticResource InfoLabel}" />
-                                            <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding ReportOutputPath}" Style="{StaticResource InfoValue}"
+                                            <TextBlock Grid.Row="8" Grid.Column="0" Text="Output Path" Style="{StaticResource InfoLabel}" />
+                                            <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding ReportOutputPath}" Style="{StaticResource InfoValue}"
                                                        TextTrimming="CharacterEllipsis" />
                                         </Grid>
                                     </StackPanel>
@@ -627,7 +611,7 @@
                 <!-- ══════════════════════════════════════════ -->
                 <!--  STATUS BAR                                -->
                 <!-- ══════════════════════════════════════════ -->
-                <Border Grid.Row="1" Grid.Column="1"
+                <Border Grid.Row="1" Grid.Column="0"
                         Background="{StaticResource BackgroundDarkBrush}"
                         BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
                         Padding="20,0">

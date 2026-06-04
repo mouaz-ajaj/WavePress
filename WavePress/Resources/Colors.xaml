@@ -78,11 +78,6 @@
         <GradientStop Color="#8B5CF6" Offset="1" />
     </LinearGradientBrush>
 
-    <!-- Sidebar gradient (deeper, more premium) -->
-    <LinearGradientBrush x:Key="SidebarGradientBrush" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#111122" Offset="0" />
-        <GradientStop Color="#0A0A14" Offset="1" />
-    </LinearGradientBrush>
 
     <!-- Header gradient with subtle accent -->
     <LinearGradientBrush x:Key="HeaderGradientBrush" StartPoint="0,0" EndPoint="1,0">
