@@ -85,11 +85,18 @@ namespace WavePress.ViewModels
         [ObservableProperty]
         private int _targetBitsPerSample = 8;
 
-        [ObservableProperty]
-        private int _quantizationLevels = 256;
+        /// <summary>
+        /// QuantizationLevels مشتق تلقائياً من TargetBitsPerSample = 2^bits.
+        /// لا يقبل إدخال مستخدم — القيمة دائماً 2^TargetBitsPerSample.
+        /// Auto-derived: always 2^TargetBitsPerSample. Not user-editable.
+        /// </summary>
+        public int QuantizationLevels => 1 << TargetBitsPerSample;
+
+        /// <summary>نص عرض مستويات التكميم المحسوبة تلقائياً في الواجهة.</summary>
+        public string QuantizationLevelsDisplay => $"{QuantizationLevels} (auto: 2^{TargetBitsPerSample})";
 
         [ObservableProperty]
-        private int _deltaStepSize = 256;
+        private int _deltaStepSize = 128;
 
         [ObservableProperty]
         private double _adaptiveFactor = 1.5;
@@ -98,16 +105,17 @@ namespace WavePress.ViewModels
         private string _outputFileName = "output";
 
         // ── حالة تفعيل/تعطيل الإعدادات حسب الخوارزمية ──
-        // 0 = Nonlinear Quantization  → BitsPerSample + QuantizationLevels
-        // 1 = DPCM                    → BitsPerSample + QuantizationLevels
-        // 2 = Delta Modulation        → DeltaStepSize فقط
-        // 3 = Adaptive Delta Mod.     → DeltaStepSize + AdaptiveFactor
+        // 0 = Nonlinear Quantization → BitsPerSample فقط (QuantizationLevels مشتق تلقائياً)
+        // 1 = DPCM                   → BitsPerSample فقط
+        // 2 = Delta Modulation       → DeltaStepSize فقط
+        // 3 = Adaptive Delta Mod.    → DeltaStepSize + AdaptiveFactor
 
         [ObservableProperty]
         private bool _isBitsPerSampleEnabled = true;
 
-        [ObservableProperty]
-        private bool _isQuantizationLevelsEnabled = true;
+        // QuantizationLevels معطّل دائماً (مشتق تلقائياً — لا حاجة لإدخال المستخدم)
+        // QuantizationLevels is always disabled — it's auto-derived from BitsPerSample.
+        public bool IsQuantizationLevelsEnabled => false;
 
         [ObservableProperty]
         private bool _isDeltaStepSizeEnabled = false;
@@ -126,26 +134,53 @@ namespace WavePress.ViewModels
             {
                 case 0: // Nonlinear Quantization (µ-law)
                 case 1: // DPCM
-                    IsBitsPerSampleEnabled      = true;
-                    IsQuantizationLevelsEnabled = true;
-                    IsDeltaStepSizeEnabled      = false;
-                    IsAdaptiveFactorEnabled     = false;
+                    IsBitsPerSampleEnabled  = true;
+                    IsDeltaStepSizeEnabled  = false;
+                    IsAdaptiveFactorEnabled = false;
                     break;
 
                 case 2: // Delta Modulation
-                    IsBitsPerSampleEnabled      = false;
-                    IsQuantizationLevelsEnabled = false;
-                    IsDeltaStepSizeEnabled      = true;
-                    IsAdaptiveFactorEnabled     = false;
+                    IsBitsPerSampleEnabled  = false;
+                    IsDeltaStepSizeEnabled  = true;
+                    IsAdaptiveFactorEnabled = false;
                     break;
 
                 case 3: // Adaptive Delta Modulation
-                    IsBitsPerSampleEnabled      = false;
-                    IsQuantizationLevelsEnabled = false;
-                    IsDeltaStepSizeEnabled      = true;
-                    IsAdaptiveFactorEnabled     = true;
+                    IsBitsPerSampleEnabled  = false;
+                    IsDeltaStepSizeEnabled  = true;
+                    IsAdaptiveFactorEnabled = true;
                     break;
             }
+        }
+
+        /// <summary>
+        /// يُستدعى تلقائياً عند تغيير TargetBitsPerSample — يُخطر الواجهة بتحديث الحقول المشتقة.
+        /// Fires when TargetBitsPerSample changes to refresh derived QuantizationLevels display.
+        /// </summary>
+        partial void OnTargetBitsPerSampleChanged(int value)
+        {
+            OnPropertyChanged(nameof(QuantizationLevels));
+            OnPropertyChanged(nameof(QuantizationLevelsDisplay));
+        }
+
+        /// <summary>
+        /// يتحقق من صحة TargetBitsPerSample قبل الضغط (1-16 فقط).
+        /// Returns an error message if invalid, null if valid.
+        /// </summary>
+        private string? ValidateSettings()
+        {
+            // التحقق من BitsPerSample فقط إن كانت الخوارزمية تستخدمه
+            bool usesBits = SelectedAlgorithmIndex == 0 || SelectedAlgorithmIndex == 1;
+            if (usesBits && (TargetBitsPerSample < 1 || TargetBitsPerSample > 16))
+                return $"Bits Per Sample must be between 1 and 16. You entered: {TargetBitsPerSample}";
+
+            if (IsDeltaStepSizeEnabled && DeltaStepSize < 1)
+                return "Delta Step Size must be at least 1.";
+
+            if (IsAdaptiveFactorEnabled && AdaptiveFactor < 1.0)
+                return "Adaptive Factor must be >= 1.0.";
+
+            return null; // صالح
         }
 
         // ══════════════════════════════════════
@@ -407,6 +442,14 @@ namespace WavePress.ViewModels
                 return;
             }
 
+            // ── التحقق من صحة الإعدادات قبل الضغط ──
+            string? validationError = ValidateSettings();
+            if (validationError != null)
+            {
+                MessageBox.Show(validationError, "Invalid Settings", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             // إعداد الإعدادات
             var settings = BuildSettings();
 
@@ -592,9 +635,9 @@ namespace WavePress.ViewModels
 
             // إعادة ضبط الإعدادات
             SelectedAlgorithmIndex = 0;
-            TargetBitsPerSample = 8;
-            QuantizationLevels = 256;
-            DeltaStepSize = 256;
+            TargetBitsPerSample    = 8;
+            // QuantizationLevels مشتق تلقائياً — لا يحتاج إعادة ضبط
+            DeltaStepSize  = 128;
             AdaptiveFactor = 1.5;
             OutputFileName = "output";
 
@@ -665,12 +708,13 @@ namespace WavePress.ViewModels
         {
             return new CompressionSettings
             {
-                AlgorithmType = (AlgorithmType)SelectedAlgorithmIndex,
+                AlgorithmType       = (AlgorithmType)SelectedAlgorithmIndex,
                 TargetBitsPerSample = TargetBitsPerSample,
-                QuantizationLevels = QuantizationLevels,
-                DeltaStepSize = DeltaStepSize,
-                AdaptiveFactor = AdaptiveFactor,
-                OutputFileName = OutputFileName
+                // QuantizationLevels مشتق تلقائياً من BitsPerSample — لا حاجة لإدخال المستخدم
+                QuantizationLevels  = QuantizationLevels, // = 1 << TargetBitsPerSample
+                DeltaStepSize       = DeltaStepSize,
+                AdaptiveFactor      = AdaptiveFactor,
+                OutputFileName      = OutputFileName
             };
         }
 

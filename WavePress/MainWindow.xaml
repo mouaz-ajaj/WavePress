@@ -328,21 +328,21 @@
                                                    Visibility="{Binding IsBitsPerSampleEnabled, Converter={StaticResource InverseBoolToVis}}" />
                                     </StackPanel>
 
-                                    <!-- ── Quantization Levels ── -->
+                                    <!-- ── Quantization Levels (Auto-derived, read-only) ── -->
                                     <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,14"
-                                                Opacity="{Binding IsQuantizationLevelsEnabled, Converter={StaticResource BoolToOpacity}}">
+                                                Opacity="0.5">
                                         <TextBlock Text="Quantization Levels" Style="{StaticResource BodyText}" Margin="0,0,0,6">
                                             <TextBlock.ToolTip>
-                                                <ToolTip Content="Number of discrete levels the signal amplitude is mapped to. More levels = higher quality. Used by Nonlinear Quantization and DPCM." />
+                                                <ToolTip Content="Auto-derived from Bits Per Sample: always 2^bits. For example, 8 bits = 256 levels. Not user-editable — changing Bits Per Sample updates this automatically." />
                                             </TextBlock.ToolTip>
                                         </TextBlock>
                                         <TextBox Style="{StaticResource ModernTextBox}"
-                                                 Text="{Binding QuantizationLevels, UpdateSourceTrigger=PropertyChanged}"
-                                                 IsEnabled="{Binding IsQuantizationLevelsEnabled}"
-                                                 ToolTip="Used by: Nonlinear Quantization, DPCM" />
-                                        <TextBlock Text="Used by: Nonlinear Quantization, DPCM"
-                                                   Style="{StaticResource CaptionText}" Margin="2,4,0,0"
-                                                   Visibility="{Binding IsQuantizationLevelsEnabled, Converter={StaticResource InverseBoolToVis}}" />
+                                                 Text="{Binding QuantizationLevelsDisplay, Mode=OneWay}"
+                                                 IsEnabled="False"
+                                                 IsReadOnly="True"
+                                                 ToolTip="Auto-derived: 2^(Bits Per Sample). Change Bits Per Sample to update." />
+                                        <TextBlock Text="Auto: 2^BitsPerSample — not user-editable"
+                                                   Style="{StaticResource CaptionText}" Margin="2,4,0,0" />
                                     </StackPanel>
 
                                     <!-- ── Delta Step Size ── -->
