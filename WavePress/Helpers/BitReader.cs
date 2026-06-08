@@ -1,3 +1,5 @@
+using System.IO;
+
 namespace WavePress.Helpers
 {
     /// <summary>
@@ -15,14 +17,14 @@ namespace WavePress.Helpers
     public sealed class BitReader
     {
         private readonly byte[] _data;
-        private int _bytePos = 0; // موضع البايت الحالي في _data
+        private int _bytePos  = 0; // موضع البايت الحالي في _data
         private int _bitsRead = 0; // عدد البتات المقروءة من البايت الحالي (0-7)
 
         /// <param name="data">بيانات مكتوبة مسبقاً بـ BitWriter</param>
         /// <param name="startOffset">موضع البداية في المصفوفة (0 افتراضياً)</param>
         public BitReader(byte[] data, int startOffset = 0)
         {
-            _data    = data;
+            _data    = data ?? throw new ArgumentNullException(nameof(data));
             _bytePos = startOffset;
         }
 
@@ -32,14 +34,21 @@ namespace WavePress.Helpers
         /// </summary>
         /// <param name="count">عدد البتات (1-16)</param>
         /// <returns>القيمة المقروءة كـ unsigned</returns>
+        /// <exception cref="EndOfStreamException">
+        ///   إذا انتهت البيانات قبل قراءة العدد المطلوب من البتات.
+        ///   Thrown when the stream has insufficient bits remaining.
+        /// </exception>
         public int ReadBits(int count)
         {
             int result = 0;
 
             for (int b = 0; b < count; b++)
             {
+                // التحقق من وجود بيانات كافية قبل كل بت
                 if (_bytePos >= _data.Length)
-                    break; // نهاية البيانات — تُرجع ما تم جمعه
+                    throw new EndOfStreamException(
+                        $"BitReader ran out of data while reading bit {b + 1} of {count}. " +
+                        $"Stream ended at byte offset {_bytePos} (data length: {_data.Length}).");
 
                 // استخراج البت من موضعه في البايت الحالي
                 int bit = (_data[_bytePos] >> _bitsRead) & 1;
@@ -66,5 +75,8 @@ namespace WavePress.Helpers
 
         /// <summary>موضع البايت الحالي في المصفوفة.</summary>
         public int BytePosition => _bytePos;
+
+        /// <summary>عدد البتات المتبقية في الـ stream.</summary>
+        public long BitsRemaining => (long)(_data.Length - _bytePos) * 8 - _bitsRead;
     }
 }

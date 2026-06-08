@@ -328,20 +328,20 @@
                                                    Visibility="{Binding IsBitsPerSampleEnabled, Converter={StaticResource InverseBoolToVis}}" />
                                     </StackPanel>
 
-                                    <!-- ── Quantization Levels (Auto-derived, read-only) ── -->
+                                    <!-- ── Quantization Levels (Calculated, read-only) ── -->
                                     <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,14"
                                                 Opacity="0.5">
                                         <TextBlock Text="Quantization Levels" Style="{StaticResource BodyText}" Margin="0,0,0,6">
                                             <TextBlock.ToolTip>
-                                                <ToolTip Content="Auto-derived from Bits Per Sample: always 2^bits. For example, 8 bits = 256 levels. Not user-editable — changing Bits Per Sample updates this automatically." />
+                                                <ToolTip Content="Calculated automatically: always 2^(Bits Per Sample). For example, 8 bits = 256 levels, 4 bits = 16 levels. Change Bits Per Sample to control this value indirectly." />
                                             </TextBlock.ToolTip>
                                         </TextBlock>
                                         <TextBox Style="{StaticResource ModernTextBox}"
                                                  Text="{Binding QuantizationLevelsDisplay, Mode=OneWay}"
                                                  IsEnabled="False"
                                                  IsReadOnly="True"
-                                                 ToolTip="Auto-derived: 2^(Bits Per Sample). Change Bits Per Sample to update." />
-                                        <TextBlock Text="Auto: 2^BitsPerSample — not user-editable"
+                                                 ToolTip="Calculated: 2^(Bits Per Sample). Control this by changing Bits Per Sample." />
+                                        <TextBlock Text="Calculated: 2^BitsPerSample"
                                                    Style="{StaticResource CaptionText}" Margin="2,4,0,0" />
                                     </StackPanel>
 

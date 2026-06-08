@@ -17,9 +17,9 @@ namespace WavePress.Helpers
     /// </summary>
     public sealed class BitWriter
     {
-        private readonly List<byte> _buffer = new();
-        private byte   _current  = 0; // البايت الجاري الكتابة فيه
-        private int    _bitsFilled = 0; // عدد البتات المكتوبة في _current (0-7)
+        private readonly List<byte> _buffer    = new();
+        private byte                _current   = 0; // البايت الجاري الكتابة فيه
+        private int                 _bitsFilled = 0; // عدد البتات المكتوبة في _current (0-7)
 
         /// <summary>
         /// يكتب <paramref name="count"/> بتاً من <paramref name="value"/> (LSB first).
@@ -27,15 +27,31 @@ namespace WavePress.Helpers
         /// </summary>
         /// <param name="value">القيمة (unsigned) المراد تخزينها</param>
         /// <param name="count">عدد البتات (1-16)</param>
+        /// <exception cref="ArgumentOutOfRangeException">
+        ///   إذا كان count خارج نطاق [1, 16].
+        ///   Thrown when count is outside [1, 16].
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        ///   إذا كانت value لا تتسع في count bits (أي value >= 2^count).
+        ///   Thrown when value does not fit in count bits.
+        /// </exception>
         public void WriteBits(int value, int count)
         {
+            if (count < 1 || count > 16)
+                throw new ArgumentOutOfRangeException(nameof(count),
+                    $"count must be between 1 and 16. Got: {count}");
+
+            int maxValue = (1 << count) - 1;
+            if (value < 0 || value > maxValue)
+                throw new ArgumentException(
+                    $"value {value} does not fit in {count} bits (valid range: 0–{maxValue}).",
+                    nameof(value));
+
             // نمر على البتات من الأقل أهمية إلى الأكثر
             for (int b = 0; b < count; b++)
             {
-                // استخراج البت الحالي من value
                 int bit = (value >> b) & 1;
 
-                // كتابة البت في موضعه داخل البايت الجاري
                 if (bit == 1)
                     _current |= (byte)(1 << _bitsFilled);
 
@@ -72,7 +88,7 @@ namespace WavePress.Helpers
         /// </summary>
         public byte[] ToArray() => _buffer.ToArray();
 
-        /// <summary>عدد البايتات في الـ buffer حتى الآن.</summary>
+        /// <summary>عدد البايتات في الـ buffer حتى الآن (بما في ذلك البايت الجزئي الحالي إن وجد).</summary>
         public int ByteCount => _buffer.Count + (_bitsFilled > 0 ? 1 : 0);
     }
 }

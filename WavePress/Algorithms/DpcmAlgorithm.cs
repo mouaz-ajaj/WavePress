@@ -10,31 +10,40 @@ namespace WavePress.Algorithms
     /// 
     /// ── كيف تعمل ──
     /// بدلاً من تخزين كل عينة بالكامل (16-bit)، نخزن الفرق (difference)
-    /// بين العينة الحالية والعينة السابقة فقط.
+    /// بين العينة الحالية والعينة السابقة في نفس القناة فقط.
     /// 
-    /// لأن الإشارات الصوتية عادة تتغير تدريجياً بين العينات المتجاورة،
-    /// فإن الفروقات تكون صغيرة ويمكن تمثيلها بعدد أقل من البتات.
+    /// الصوت الاستيريو (2 channels) يُعالَج بشكل مستقل لكل قناة:
+    ///   فروق القناة اليسرى  [L0, ΔL1, ΔL2, ...] تُحسب بين L-samples فقط.
+    ///   فروق القناة اليمنى  [R0, ΔR1, ΔR2, ...] تُحسب بين R-samples فقط.
+    /// لا يتم خلط بيانات القناتين، مما يعطي جودة أفضل من حساب الفروق بين
+    /// عينات متتالية في الـ interleaved stream.
     /// 
-    /// تخزين البتات يتم بدقة حقيقية باستخدام BitWriter:
-    ///   targetBits=4  → كل فرق بـ 4 بتات حقيقية → نسبة ~4:1 (تتفاوت حسب الإشارة)
-    ///   targetBits=8  → كل فرق بـ 8 بتات         → نسبة ~2:1
-    ///   targetBits=16 → كل فرق بـ 16 بتاً         → نسبة ~1:1
+    /// حجم الملف المضغوط يعتمد أساساً على TargetBitsPerSample:
+    ///   targetBits=4  → كل فرق بـ 4 بتات حقيقية → نسبة ≈ 4:1
+    ///   targetBits=8  → كل فرق بـ 8 بتات         → نسبة ≈ 2:1
+    ///   targetBits=12 → كل فرق بـ 12 بتاً         → نسبة ≈ 1.33:1
+    ///   targetBits=16 → كل فرق بـ 16 بتاً         → نسبة ≈ 1:1
+    /// 
+    /// ملاحظة: TargetBitsPerSample يجب أن يكون بين 2 و 16.
+    ///   - 1 bit ممنوع لأن maxDiff يصبح 0 مما يسبب خطأ في القسمة.
+    ///   - للضغط بمعدل 1 bit/sample، استخدم خوارزمية Delta Modulation.
+    /// 
+    /// DeltaStepSize يؤثر على جودة الصوت لا حجم الملف:
+    ///   خطوة صغيرة → دقة أعلى للإشارات الهادئة لكن احتمال slope overload.
+    ///   خطوة كبيرة → تتبع الإشارات السريعة لكن ضوضاء أعلى.
     /// 
     /// ── هيكل الملف المضغوط ──
-    /// [4 bytes: totalSamples] [1 byte: targetBits] [2 bytes: firstSample] [2 bytes: stepSize]
-    /// [بيانات مضغوطة بـ BitWriter — targetBits per diff, unsigned offset encoding]
+    /// [4 bytes: totalSamples] [1 byte: diffBits] [1 byte: channels]
+    /// ثم لكل قناة: [2 bytes: firstSample] [2 bytes: stepSize]
+    /// ثم: بيانات مضغوطة بـ BitWriter (جميع القنوات مخللة / interleaved)
     /// 
-    /// Encoding: quantizedDiff stored as (quantizedDiff - minDiff) where minDiff = -2^(n-1)
-    /// This maps the signed range [-2^(n-1), 2^(n-1)-1] to unsigned [0, 2^n - 1].
-    /// 
-    /// ── How it works ──
-    /// Stores quantized differences between consecutive samples using exactly
-    /// targetBitsPerSample bits per difference via BitWriter (true bit-level packing).
+    /// Encoding: unsigned offset → (quantizedDiff - minDiff)
+    ///   maps signed [-2^(n-1), 2^(n-1)-1] to unsigned [0, 2^n - 1].
     /// </summary>
     public class DpcmAlgorithm : IAudioCompressionAlgorithm
     {
         public string Name        => "DPCM (Differential PCM)";
-        public string Description => "Encodes quantized differences between samples using true bit-level packing.";
+        public string Description => "Encodes per-channel differences between consecutive samples using true bit-level packing.";
 
         public Task<CompressionResult> CompressAsync(
             AudioSampleData input,
@@ -46,67 +55,98 @@ namespace WavePress.Algorithms
             {
                 var stopwatch    = Stopwatch.StartNew();
                 int totalSamples = input.Samples.Length;
-                int diffBits     = settings.TargetBitsPerSample; // عدد البتات للفرق
+                int channels     = Math.Max(1, input.Channels);
+                int diffBits     = settings.TargetBitsPerSample;
 
-                // نطاق الفروقات المكممة (signed two's complement range for diffBits)
-                int maxDiff = (1 << (diffBits - 1)) - 1;  // مثلاً: 4 bits → +7
-                int minDiff = -(1 << (diffBits - 1));      // مثلاً: 4 bits → -8
-                // العدد الكلي للمستويات = 2^diffBits (مثلاً 4 bits → 16 مستوى)
+                // ── Validation ──
+                // 1-bit غير مدعوم في DPCM: يسبب maxDiff = 0 → قسمة على صفر.
+                // للضغط بـ 1 bit/sample استخدم Delta Modulation.
+                if (diffBits < 2 || diffBits > 16)
+                    throw new ArgumentOutOfRangeException(nameof(settings),
+                        $"DPCM requires TargetBitsPerSample between 2 and 16 (got {diffBits}). " +
+                        "For 1-bit encoding, use Delta Modulation instead.");
 
-                // ── حساب عامل التحجيم (scale factor) ──
-                // نأخذ عينة من الفروقات الفعلية لضبط step size بحيث لا يفيض
-                int maxActualDiff = 1;
-                int scanLimit = Math.Min(totalSamples, 50_000);
-                for (int i = 1; i < scanLimit; i++)
+                // نطاق الفروقات المكممة للـ diffBits المحدد
+                int maxDiff = (1 << (diffBits - 1)) - 1;  // e.g. 4 bits → +7
+                int minDiff = -(1 << (diffBits - 1));      // e.g. 4 bits → -8
+
+                // ── حساب عدد العينات per-channel ──
+                // المصفوفة Interleaved: [L0, R0, L1, R1, ...]
+                int samplesPerChannel = totalSamples / channels;
+
+                // ── حساب stepSize لكل قناة بشكل مستقل ──
+                int[] stepSizes = new int[channels];
+                for (int ch = 0; ch < channels; ch++)
                 {
-                    int d = Math.Abs(input.Samples[i] - input.Samples[i - 1]);
-                    if (d > maxActualDiff) maxActualDiff = d;
+                    int maxActualDiff = 1;
+                    int scanLimit     = Math.Min(samplesPerChannel, 50_000);
+
+                    for (int i = 1; i < scanLimit; i++)
+                    {
+                        // موضع العينة في الـ interleaved array
+                        int idx  = i * channels + ch;
+                        int prev = (i - 1) * channels + ch;
+                        if (idx < totalSamples && prev < totalSamples)
+                        {
+                            int d = Math.Abs(input.Samples[idx] - input.Samples[prev]);
+                            if (d > maxActualDiff) maxActualDiff = d;
+                        }
+                    }
+                    // نضيف 1 لضمان أن maxActualDiff / stepSize ≤ maxDiff
+                    stepSizes[ch] = Math.Max(1, (maxActualDiff + maxDiff - 1) / maxDiff);
                 }
-                // stepSize: يحول الفروقات الكبيرة إلى النطاق المتاح
-                // نضيف 1 لضمان أن maxActualDiff / stepSize ≤ maxDiff
-                int stepSize = Math.Max(1, (maxActualDiff + maxDiff - 1) / maxDiff);
 
                 // ── بناء الهيدر ──
-                // [4 bytes: totalSamples] [1 byte: diffBits] [2 bytes: firstSample] [2 bytes: stepSize]
+                // [4: totalSamples] [1: diffBits] [1: channels]
+                // ثم لكل قناة: [2: firstSample] [2: stepSize]
                 using var headerStream = new MemoryStream();
                 using var headerWriter = new BinaryWriter(headerStream);
-                headerWriter.Write(totalSamples);          // 4 bytes
-                headerWriter.Write((byte)diffBits);        // 1 byte
-                headerWriter.Write(input.Samples[0]);      // 2 bytes (Int16)
-                headerWriter.Write((short)stepSize);       // 2 bytes
-                byte[] header = headerStream.ToArray();    // 9 bytes total
+                headerWriter.Write(totalSamples);       // 4 bytes
+                headerWriter.Write((byte)diffBits);     // 1 byte
+                headerWriter.Write((byte)channels);     // 1 byte
 
-                // ── تشفير الفروقات بـ BitWriter ──
-                var bitWriter = new BitWriter();
-                short predicted = input.Samples[0];
+                for (int ch = 0; ch < channels; ch++)
+                {
+                    short firstSample = (totalSamples > ch) ? input.Samples[ch] : (short)0;
+                    headerWriter.Write(firstSample);            // 2 bytes (Int16)
+                    headerWriter.Write((short)stepSizes[ch]);   // 2 bytes
+                }
+                byte[] header = headerStream.ToArray(); // 6 + 4*channels bytes
 
-                for (int i = 1; i < totalSamples; i++)
+                // ── تشفير الفروقات بـ BitWriter (per-channel) ──
+                var bitWriter  = new BitWriter();
+                short[] predicted = new short[channels];
+                for (int ch = 0; ch < channels; ch++)
+                    predicted[ch] = (totalSamples > ch) ? input.Samples[ch] : (short)0;
+
+                // نمر على العينات بترتيب interleaved لكن نتتبع predicted بشكل مستقل لكل قناة
+                for (int i = channels; i < totalSamples; i++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    // حساب الفرق الفعلي وتكميمه
-                    int actualDiff    = input.Samples[i] - predicted;
+                    int ch        = i % channels;
+                    int stepSize  = stepSizes[ch];
+
+                    int actualDiff    = input.Samples[i] - predicted[ch];
                     int quantizedDiff = (int)Math.Round((double)actualDiff / stepSize);
                     quantizedDiff     = Math.Clamp(quantizedDiff, minDiff, maxDiff);
 
-                    // تحديث predicted بالفرق المكمم (لضمان تطابق encoder/decoder)
-                    predicted = (short)Math.Clamp(
-                        predicted + quantizedDiff * stepSize,
+                    // تحديث predicted بالفرق المكمم لضمان تطابق encoder/decoder
+                    predicted[ch] = (short)Math.Clamp(
+                        predicted[ch] + quantizedDiff * stepSize,
                         short.MinValue, short.MaxValue);
 
-                    // تحويل signed → unsigned: نضيف (2^(n-1)) لجعل القيمة غير سالبة
-                    // مثال (4 bits): range [-8..+7] → [0..15]
-                    int encoded = quantizedDiff - minDiff; // يعادل: quantizedDiff + 2^(n-1)
-
-                    // كتابة بعدد البتات المطلوب بدقة
+                    // تحويل signed → unsigned: نضيف 2^(n-1) لجعل القيمة غير سالبة
+                    int encoded = quantizedDiff - minDiff; // e.g. 4 bits: [-8..+7] → [0..15]
                     bitWriter.WriteBits(encoded, diffBits);
 
                     if (i % 10000 == 0 && i > 0)
                     {
-                        double percent      = (double)i / totalSamples * 100.0;
-                        double elapsed      = stopwatch.Elapsed.TotalSeconds;
-                        double speedMBps    = elapsed > 0 ? (i * 2.0 / 1_048_576.0) / elapsed : 0;
-                        double approxRatio  = 16.0 / diffBits;
+                        double percent     = (double)i / totalSamples * 100.0;
+                        double elapsed     = stopwatch.Elapsed.TotalSeconds;
+                        double speedMBps   = elapsed > 0 ? (i * 2.0 / 1_048_576.0) / elapsed : 0;
+                        // النسبة تعتمد على عدد البتات: 16 ÷ diffBits
+                        double approxRatio = 16.0 / diffBits;
 
                         progress.Report(new CompressionProgress
                         {
@@ -125,7 +165,6 @@ namespace WavePress.Algorithms
                 Buffer.BlockCopy(bitData, 0, compressed, header.Length, bitData.Length);
 
                 stopwatch.Stop();
-
                 double finalRatio = (totalSamples * 2.0) / compressed.Length;
 
                 progress.Report(new CompressionProgress
@@ -143,7 +182,7 @@ namespace WavePress.Algorithms
                     AlgorithmName         = Name,
                     TimeElapsed           = stopwatch.Elapsed,
                     OriginalSampleRate    = input.SampleRate,
-                    OriginalChannels      = input.Channels,
+                    OriginalChannels      = channels,
                     OriginalBitsPerSample = input.BitsPerSample,
                     OriginalSampleCount   = totalSamples,
                     Settings              = settings
@@ -163,35 +202,50 @@ namespace WavePress.Algorithms
                 byte[] data   = compressedData.CompressedData;
 
                 // ── قراءة الهيدر ──
-                // [4 bytes: totalSamples] [1 byte: diffBits] [2 bytes: firstSample] [2 bytes: stepSize]
-                int  totalSamples  = BitConverter.ToInt32(data, 0);
-                int  diffBits      = data[4];
-                short firstSample  = BitConverter.ToInt16(data, 5);
-                short stepSize     = BitConverter.ToInt16(data, 7);
-                int  headerSize    = 9;
+                // [4: totalSamples] [1: diffBits] [1: channels]
+                // ثم لكل قناة: [2: firstSample] [2: stepSize]
+                int   totalSamples = BitConverter.ToInt32(data, 0);
+                int   diffBits     = data[4];
+                int   channels     = data[5];
+                int   minDiff      = -(1 << (diffBits - 1));
+                int   headerBase   = 6; // موضع بداية بيانات القنوات
 
-                int minDiff = -(1 << (diffBits - 1)); // مثلاً 4 bits → -8
+                short[] firstSamples = new short[channels];
+                short[] stepSizes    = new short[channels];
+                for (int ch = 0; ch < channels; ch++)
+                {
+                    firstSamples[ch] = BitConverter.ToInt16(data, headerBase + ch * 4);
+                    stepSizes[ch]    = BitConverter.ToInt16(data, headerBase + ch * 4 + 2);
+                }
 
-                short[] samples = new short[totalSamples];
-                samples[0]      = firstSample;
-                short predicted = firstSample;
+                int headerSize   = headerBase + channels * 4; // الحجم الكلي للهيدر
+                short[] samples  = new short[totalSamples];
+                short[] predicted = new short[channels];
+
+                // تهيئة العينات الأولى لكل قناة
+                for (int ch = 0; ch < channels; ch++)
+                {
+                    samples[ch]   = firstSamples[ch];
+                    predicted[ch] = firstSamples[ch];
+                }
 
                 var bitReader = new BitReader(data, headerSize);
 
-                for (int i = 1; i < totalSamples; i++)
+                // نعيد بناء العينات بنفس ترتيب الـ interleaved
+                for (int i = channels; i < totalSamples; i++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    // قراءة القيمة المكممة (unsigned)
-                    int encoded       = bitReader.ReadBits(diffBits);
-                    // عكس الإزاحة: unsigned → signed
-                    int quantizedDiff = encoded + minDiff;
+                    int ch       = i % channels;
+                    int stepSize = stepSizes[ch];
 
-                    // إعادة بناء العينة
-                    predicted = (short)Math.Clamp(
-                        predicted + quantizedDiff * stepSize,
+                    int encoded       = bitReader.ReadBits(diffBits);
+                    int quantizedDiff = encoded + minDiff; // عكس الإزاحة
+
+                    predicted[ch] = (short)Math.Clamp(
+                        predicted[ch] + quantizedDiff * stepSize,
                         short.MinValue, short.MaxValue);
-                    samples[i] = predicted;
+                    samples[i] = predicted[ch];
 
                     if (i % 10000 == 0 && i > 0)
                     {
@@ -210,7 +264,7 @@ namespace WavePress.Algorithms
                 {
                     Samples       = samples,
                     SampleRate    = compressedData.OriginalSampleRate,
-                    Channels      = compressedData.OriginalChannels,
+                    Channels      = channels,
                     BitsPerSample = compressedData.OriginalBitsPerSample
                 };
             }, cancellationToken);

@@ -86,14 +86,17 @@ namespace WavePress.ViewModels
         private int _targetBitsPerSample = 8;
 
         /// <summary>
-        /// QuantizationLevels مشتق تلقائياً من TargetBitsPerSample = 2^bits.
-        /// لا يقبل إدخال مستخدم — القيمة دائماً 2^TargetBitsPerSample.
-        /// Auto-derived: always 2^TargetBitsPerSample. Not user-editable.
+        /// QuantizationLevels محسوب تلقائياً من TargetBitsPerSample = 2^bits.
+        /// العلاقة بين البتات ومستويات التكميم رياضية: levels = 2^bits.
+        /// يتحكم فيه المستخدم بشكل غير مباشر عبر Bits Per Sample.
+        /// 
+        /// Quantization Levels is a calculated read-only value: 2^BitsPerSample.
+        /// The user controls it indirectly through Bits Per Sample.
         /// </summary>
         public int QuantizationLevels => 1 << TargetBitsPerSample;
 
         /// <summary>نص عرض مستويات التكميم المحسوبة تلقائياً في الواجهة.</summary>
-        public string QuantizationLevelsDisplay => $"{QuantizationLevels} (auto: 2^{TargetBitsPerSample})";
+        public string QuantizationLevelsDisplay => $"{QuantizationLevels:N0}  (= 2^{TargetBitsPerSample}, calculated)";
 
         [ObservableProperty]
         private int _deltaStepSize = 128;
@@ -164,15 +167,24 @@ namespace WavePress.ViewModels
         }
 
         /// <summary>
-        /// يتحقق من صحة TargetBitsPerSample قبل الضغط (1-16 فقط).
+        /// يتحقق من صحة الإعدادات قبل الضغط.
         /// Returns an error message if invalid, null if valid.
         /// </summary>
         private string? ValidateSettings()
         {
-            // التحقق من BitsPerSample فقط إن كانت الخوارزمية تستخدمه
-            bool usesBits = SelectedAlgorithmIndex == 0 || SelectedAlgorithmIndex == 1;
-            if (usesBits && (TargetBitsPerSample < 1 || TargetBitsPerSample > 16))
-                return $"Bits Per Sample must be between 1 and 16. You entered: {TargetBitsPerSample}";
+            int algIndex = SelectedAlgorithmIndex;
+
+            // Nonlinear Quantization (µ-law): 1–16 bits
+            if (algIndex == 0 && (TargetBitsPerSample < 1 || TargetBitsPerSample > 16))
+                return $"Nonlinear Quantization: Bits Per Sample must be between 1 and 16. You entered: {TargetBitsPerSample}";
+
+            // DPCM: 2–16 bits — 1 bit ممنوع لأن maxDiff = 0 مما يسبب خطأ قسمة على صفر
+            if (algIndex == 1)
+            {
+                if (TargetBitsPerSample < 2 || TargetBitsPerSample > 16)
+                    return $"DPCM: Bits Per Sample must be between 2 and 16. You entered: {TargetBitsPerSample}.\n" +
+                           "For 1-bit encoding, use \"Delta Modulation\" instead.";
+            }
 
             if (IsDeltaStepSizeEnabled && DeltaStepSize < 1)
                 return "Delta Step Size must be at least 1.";
